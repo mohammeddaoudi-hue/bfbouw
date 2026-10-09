@@ -1327,3 +1327,21 @@ select.veld.is-gekozen { color: var(--ink); }
 }
 .paginakop:has(+ .ocijfers) .paginakop__in { padding-bottom: calc(118 * var(--u)); }
 @media (max-width: 1000px) { .paginakop:has(+ .ocijfers) .paginakop__in { padding-bottom: 64px; } }
+
+/* werkwijze-stappen: iets rustiger en natuurlijker (Mohammed 9 okt: "iets verbeteren, niet te visueel dat het te tech lijkt") */
+@media (min-width: 1001px) {
+  .proces__stappen { gap: calc(64 * var(--u)); }
+  .pstap { text-align: left; background: var(--wit); padding: calc(34 * var(--u)) calc(32 * var(--u)) calc(36 * var(--u)); border-radius: calc(18 * var(--u)); box-shadow: 0 0 0 calc(1 * var(--u)) #e8e8e8; }
+  .pstap__pijl { right: calc(-62 * var(--u)); top: calc(44 * var(--u)); color: #b9b9b9; }
+}
+.pstap__nr { margin: 0; background: #fff1e8; box-shadow: none; color: var(--merk-tekst); }
+.pstap h3 { margin-top: calc(20 * var(--u)); font-size: calc(21 * var(--u)); }
+.pstap p { font-size: calc(16.5 * var(--u)); line-height: 1.65; }
+.pstap:hover { background: var(--wit); box-shadow: 0 0 0 calc(1.5 * var(--u)) rgba(252, 102, 7, .4), 0 calc(20 * var(--u)) calc(44 * var(--u)) calc(-26 * var(--u)) rgba(17, 17, 17, .25); }
+.pstap:hover .pstap__nr { background: var(--merk); color: var(--op-merk); box-shadow: none; }
+@media (max-width: 1000px) {
+  .pstap { text-align: left; background: var(--wit); box-shadow: 0 0 0 1px #e8e8e8; }
+  .pstap__pijl { color: #b9b9b9; }
+  .pstap h3 { font-size: 19px; margin-top: 16px; }
+  .pstap p { font-size: 15.5px; }
+}
