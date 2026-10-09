@@ -1345,3 +1345,4 @@ select.veld.is-gekozen { color: var(--ink); }
   .pstap h3 { font-size: 19px; margin-top: 16px; }
   .pstap p { font-size: 15.5px; }
 }
+.pstap__nr { color: #a64305; } /* 4,49:1 werd ruim 5:1 op het lichtoranje rondje */
