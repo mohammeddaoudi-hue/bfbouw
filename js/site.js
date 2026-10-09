@@ -235,3 +235,26 @@
   }, { threshold: 0.6 });
   Array.prototype.forEach.call(els, function (el) { el.textContent = '0' + (el.getAttribute('data-na') || ''); io.observe(el); });
 })();
+
+/* gsm: puntjes onder de veegbare rijen (zekerheden, tips) en oplichtende werkwijzestap tijdens het scrollen */
+(function () {
+  'use strict';
+  var d = document;
+  Array.prototype.forEach.call(d.querySelectorAll('.waarom__veld, .blog__raster'), function (rij) {
+    var kaarten = Array.prototype.filter.call(rij.children, function (k) { return k.matches('.wkaart, .post'); });
+    if (kaarten.length < 2) return;
+    var hint = d.createElement('div'); hint.className = 'veeghint'; hint.setAttribute('aria-hidden', 'true');
+    kaarten.forEach(function (k, i) { var s = d.createElement('span'); if (!i) s.className = 'is-actief'; hint.appendChild(s); });
+    rij.parentNode.insertBefore(hint, rij.nextSibling);
+    rij.addEventListener('scroll', function () {
+      var l = rij.getBoundingClientRect().left, best = 0, af = 1e9;
+      kaarten.forEach(function (k, i) { var x = Math.abs(k.getBoundingClientRect().left - l - 16); if (x < af) { af = x; best = i; } });
+      Array.prototype.forEach.call(hint.children, function (s, i) { s.classList.toggle('is-actief', i === best); });
+    }, { passive: true });
+  });
+  var stappen = d.querySelectorAll('.pstap');
+  if (stappen.length && 'IntersectionObserver' in window && window.matchMedia('(max-width: 1000px)').matches) {
+    var io = new IntersectionObserver(function (items) { items.forEach(function (it) { it.target.classList.toggle('is-in-beeld', it.isIntersecting); }); }, { rootMargin: '-45% 0px -45% 0px' });
+    Array.prototype.forEach.call(stappen, function (s) { io.observe(s); });
+  }
+})();
