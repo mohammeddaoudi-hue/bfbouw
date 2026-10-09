@@ -91,13 +91,13 @@
         meld('Bezig met versturen…');
         fetch(eindpunt, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
           .then(function (r) { if (!r.ok) throw new Error(r.status); form.reset(); meld('Bedankt. Wij bellen u terug om een bezoek in te plannen.'); })
-          .catch(function () { meld('Versturen lukte niet. Bel ons op 0498 66 13 92 of mail naar ' + MAIL + '.'); });
+          .catch(function () { meld('Versturen lukte niet. Bel ons op 0492 48 13 83 of mail naar ' + MAIL + '.'); });
         return;
       }
       var body = (form.getAttribute('data-soort') || 'Offerteaanvraag') + ' via bfbouw.be\n\nNaam: ' + data.naam + '\nTelefoon: ' + data.telefoon + '\nE-mail: ' + data.email + '\nWerk: ' + data.dienst + '\nPostcode: ' + data.postcode + '\nProject: ' + data.project + '\n';
       var href = 'mailto:' + MAIL + '?subject=' + encodeURIComponent((form.getAttribute('data-soort') || 'Offerteaanvraag') + ' ' + data.dienst + ' - ' + data.naam) + '&body=' + encodeURIComponent(body);
       openMail(href);
-      meld('Uw e-mailprogramma opent met uw aanvraag. Verstuur die e-mail om de aanvraag af te ronden, of bel ons op 0498 66 13 92.');
+      meld('Uw e-mailprogramma opent met uw aanvraag. Verstuur die e-mail om de aanvraag af te ronden, of bel ons op 0492 48 13 83.');
     });
   });
 })();
