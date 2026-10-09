@@ -177,7 +177,8 @@
       Array.prototype.forEach.call(box.querySelectorAll('[data-paneel]'), function (p) { var aan = p.getAttribute('data-paneel') === soort; p.hidden = !aan; p.classList.toggle('is-on', aan); });
     });
     var pill = d.querySelector('.plaats__inspectie'); if (pill) pill.hidden = soort === 'inspectie';
-    if (focus) { var veld = d.getElementById(soort + '-naam'); if (veld) { veld.focus({ preventScroll: true }); d.getElementById('offerte-blok').scrollIntoView({ behavior: 'smooth', block: 'start' }); } }
+    // geen focus op een veld: op gsm zou het toetsenbord meteen openspringen (Mohammed 9 okt); alleen naar de formulierkaart scrollen
+    if (focus) { var kaart = d.querySelector('.plaats__formkern'), kop = d.querySelector('.kop'); if (kaart) { var hoog = kop ? kop.getBoundingClientRect().height : 0; window.scrollTo({ top: kaart.getBoundingClientRect().top + window.scrollY - hoog - 12, behavior: 'smooth' }); } }
   }
   Array.prototype.forEach.call(d.querySelectorAll('[data-wissel]'), function (t) { t.addEventListener('click', function () { wissel(t.getAttribute('data-wissel'), false); }); });
   Array.prototype.forEach.call(d.querySelectorAll('[data-kies]'), function (knop) { knop.addEventListener('click', function () { wissel('inspectie', true); }); });
@@ -257,4 +258,12 @@
     var io = new IntersectionObserver(function (items) { items.forEach(function (it) { it.target.classList.toggle('is-in-beeld', it.isIntersecting); }); }, { rootMargin: '-45% 0px -45% 0px' });
     Array.prototype.forEach.call(stappen, function (s) { io.observe(s); });
   }
+})();
+
+/* gsm: zwevende belknop rechtsonder zodra de hero voorbij is */
+(function () {
+  'use strict';
+  var knop = document.querySelector('.belzweef'); if (!knop) return;
+  function zet() { knop.classList.toggle('is-zichtbaar', window.scrollY > window.innerHeight * 0.6); }
+  zet(); window.addEventListener('scroll', zet, { passive: true });
 })();

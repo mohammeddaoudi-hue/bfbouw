@@ -1364,3 +1364,17 @@ select.veld.is-gekozen { color: var(--ink); }
 .pstap.is-in-beeld { background: var(--wit); box-shadow: 0 0 0 1.5px rgba(252, 102, 7, .45), 0 18px 40px -24px rgba(17, 17, 17, .25); }
 .pstap.is-in-beeld .pstap__nr { background: var(--merk); color: var(--op-merk); }
 @media (max-width: 1000px) { .fwissel button { font-size: 14px; white-space: nowrap; padding: 0 6px; } }
+
+/* nav: knop "Gratis dakinspectie" (alleen op gsm, na het scrollen) en zwevende belknop rechtsonder (Mohammed 9 okt) */
+.nav__inspectie { display: none; }
+.belzweef { display: none; }
+@media (max-width: 1000px) {
+  .kop--over.is-gescrold .nav__inspectie { display: inline-flex; align-items: center; height: 44px; padding: 0 16px; margin-left: auto; border-radius: 999px; background: var(--merk); color: var(--op-merk); font: inherit; font-size: 14px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+  .kop--over.is-gescrold .nav__tel { display: none; }
+  .kop--over.is-gescrold .nav__acties { margin-left: auto; }
+  .belzweef { display: grid; place-items: center; position: fixed; right: 16px; bottom: 16px; z-index: 40; width: 58px; height: 58px; border-radius: 50%; background: var(--merk); color: var(--op-merk); box-shadow: 0 12px 28px -10px rgba(17, 17, 17, .5); opacity: 0; transform: translateY(16px) scale(.9); pointer-events: none; transition: opacity .25s ease, transform .25s ease; }
+  .belzweef svg { width: 26px; height: 26px; }
+  .belzweef.is-zichtbaar { opacity: 1; transform: none; pointer-events: auto; }
+  /* hero op volle schermhoogte, ook wanneer de adresbalk verdwijnt */
+  .hero { min-height: 100svh; min-height: 100dvh; }
+}
