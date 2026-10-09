@@ -76,7 +76,7 @@
       var fout = null;
       [].forEach.call(form.querySelectorAll('input, select, textarea'), function (v) { v.removeAttribute('aria-invalid'); });
       var vn = form.elements.naam, te = form.elements.telefoon, em = form.elements.email, di = form.elements.dienst;
-      if (!vn.value.trim()) fout = fout || vn;
+      if (!vn.value.trim() && !form.hasAttribute('data-naam-optioneel')) fout = fout || vn; // rekenaar LP: alleen telefoon verplicht (zoals AB)
       if (!/^[+0-9 ()./-]{8,}$/.test(te.value.trim())) fout = fout || te;
       if (em.value.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em.value.trim())) fout = fout || em;
       if (!di.value) fout = fout || di;
@@ -94,7 +94,7 @@
           .catch(function () { meld('Versturen lukte niet. Bel ons op 0492 48 13 83 of mail naar ' + MAIL + '.'); });
         return;
       }
-      var body = (form.getAttribute('data-soort') || 'Offerteaanvraag') + ' via bfbouw.be\n\nNaam: ' + data.naam + '\nTelefoon: ' + data.telefoon + '\nE-mail: ' + data.email + '\nWerk: ' + data.dienst + '\nPostcode: ' + data.postcode + '\nProject: ' + data.project + '\n';
+      var body = (form.getAttribute('data-soort') || 'Offerteaanvraag') + ' via bfbouw.be\n\nNaam: ' + data.naam + '\nTelefoon: ' + data.telefoon + '\nE-mail: ' + data.email + '\nWerk: ' + data.dienst + (form.querySelector('select[name=postcode]') ? '\nProvincie: ' : '\nPostcode: ') + data.postcode + '\nProject: ' + data.project + '\n';
       var href = 'mailto:' + MAIL + '?subject=' + encodeURIComponent((form.getAttribute('data-soort') || 'Offerteaanvraag') + ' ' + data.dienst + ' - ' + data.naam) + '&body=' + encodeURIComponent(body);
       openMail(href);
       meld('Uw e-mailprogramma opent met uw aanvraag. Verstuur die e-mail om de aanvraag af te ronden, of bel ons op 0492 48 13 83.');
@@ -266,4 +266,63 @@
   var knop = document.querySelector('.belzweef'); if (!knop) return;
   function zet() { knop.classList.toggle('is-zichtbaar', window.scrollY > window.innerHeight * 0.6); }
   zet(); window.addEventListener('scroll', zet, { passive: true });
+})();
+
+/* Rekenaar dakprijs (landingspagina): één vraag tegelijk, een tik = volgende vraag, terug kan altijd,
+   vragen met een voorwaarde verschijnen alleen bij het juiste antwoord. Werking zoals bij AB Bouw. */
+(function () {
+  'use strict';
+  var d = document, rk = d.querySelector('[data-rekenaar]'); if (!rk) return;
+  var stappen = Array.prototype.slice.call(rk.querySelectorAll('fieldset.rk__stap'));
+  var form = rk.querySelector('form.rk__form'), klaar = rk.querySelector('.rk__klaar');
+  var teller = rk.querySelector('[data-teller]'), terugKnop = rk.querySelector('[data-terug]'), balk = rk.querySelector('.rk__balk i');
+  var gerust = rk.querySelector('[data-gerust]'), tipvak = rk.querySelector('[data-tipvak]'), eind = rk.querySelector('.rk__eind');
+  var antw = {}, pad = [0], tip = '';
+  function als(s) { var a = s.getAttribute('data-als'); return a ? JSON.parse(a) : null; }
+  // past de stap bij de antwoorden? een nog onbeantwoorde voorwaarde telt mee als "misschien" voor de teller
+  function past(s, streng) { var a = als(s); if (!a) return true; return Object.keys(a).every(function (k) { return antw[k] === undefined ? !streng : a[k].indexOf(antw[k]) > -1; }); }
+  function volgende(i) { for (var j = i + 1; j < stappen.length; j++) if (past(stappen[j], true)) return j; return -1; }
+  function totaal() { var s2 = {}; stappen.forEach(function (s) { if (past(s, false)) s2[s.getAttribute('data-sleutel')] = 1; }); return Object.keys(s2).length; } // per sleutel: de twee bedekkingsvragen sluiten elkaar uit
+  function inBeeld() { var kop = d.querySelector('.kop'), h = kop ? kop.getBoundingClientRect().height : 0, top = rk.getBoundingClientRect().top; if (top < h) window.scrollTo({ top: top + window.scrollY - h - 12, behavior: 'smooth' }); }
+  function toon() {
+    var nu = pad[pad.length - 1], n = totaal();
+    stappen.forEach(function (s, i) { s.hidden = i !== nu; });
+    form.hidden = nu !== 'eind'; klaar.hidden = true;
+    terugKnop.hidden = pad.length < 2;
+    teller.textContent = nu === 'eind' ? 'Laatste stap' : 'Vraag ' + pad.length + ' van ' + n;
+    balk.style.width = Math.round((nu === 'eind' ? 1 : (pad.length - 1) / n) * 100) + '%';
+    eind.classList.toggle('is-aan', nu === 'eind');
+    gerust.hidden = !(typeof nu === 'number' && nu > 0);
+    tipvak.hidden = !tip; tipvak.textContent = tip;
+  }
+  stappen.forEach(function (s, i) {
+    Array.prototype.forEach.call(s.querySelectorAll('.rk__keuze'), function (k) {
+      k.addEventListener('click', function () {
+        var sleutel = s.getAttribute('data-sleutel'), waarde = k.getAttribute('data-waarde');
+        antw[sleutel] = waarde;
+        Array.prototype.forEach.call(s.querySelectorAll('.rk__keuze'), function (x) { x.classList.toggle('is-aan', x === k); x.setAttribute('aria-pressed', x === k ? 'true' : 'false'); });
+        var bij = s.getAttribute('data-tip-bij'); tip = bij && JSON.parse(bij).indexOf(waarde) > -1 ? s.getAttribute('data-tip') : '';
+        var v = volgende(i);
+        pad.push(v < 0 ? 'eind' : v);
+        if (v < 0) form.elements.project.value = pad.filter(function (x) { return typeof x === 'number'; }).map(function (x) { var k = stappen[x].getAttribute('data-sleutel'); return k + ': ' + antw[k]; }).join(' · '); // alleen de doorlopen vragen
+        toon(); inBeeld();
+      });
+    });
+  });
+  terugKnop.addEventListener('click', function () { if (pad.length > 1) { pad.pop(); tip = ''; toon(); inBeeld(); } });
+  // na een geslaagde verzending (bedankmelding van het gewone formulier) het bedankscherm tonen
+  new MutationObserver(function () { var m = form.querySelector('.formulier-melding'); if (m && /bedankt/i.test(m.textContent)) { form.hidden = true; klaar.hidden = false; terugKnop.hidden = true; teller.textContent = 'Klaar'; gerust.hidden = true; tipvak.hidden = true; } }).observe(form, { subtree: true, childList: true, characterData: true });
+  toon();
+})();
+
+/* LP gsm: vaste knop "Gratis dakinspectie" onderaan zodra de rekenaar en het inspectieformulier uit beeld zijn */
+(function () {
+  'use strict';
+  var knop = document.querySelector('[data-lpsticky]'), rk = document.getElementById('rekenaar'), insp = document.getElementById('offerte-blok');
+  if (!knop || !rk || !('IntersectionObserver' in window)) return;
+  var zicht = { rk: true, insp: false };
+  function zet() { knop.classList.toggle('is-zichtbaar', !zicht.rk && !zicht.insp && window.scrollY > 300); }
+  new IntersectionObserver(function (it) { it.forEach(function (x) { zicht[x.target === rk ? 'rk' : 'insp'] = x.isIntersecting; }); zet(); }, { threshold: 0.15 }).observe(rk);
+  if (insp) new IntersectionObserver(function (it) { zicht.insp = it[0].isIntersecting; zet(); }, { threshold: 0.15 }).observe(insp);
+  window.addEventListener('scroll', zet, { passive: true });
 })();
