@@ -67,6 +67,8 @@
   // Zonder koppeling (geen data-form-endpoint op <html>) maakt het formulier een ingevulde e-mail aan info@bfbouw.be.
   // Tests zetten window.__bfOpenMail zodat er nooit een mailprogramma opent op de pc.
   var MAIL = 'info@bfbouw.be';
+  // na een geslaagde aanvraag door naar de bedankpagina (data-na); telefoon, naam en e-mail gaan mee in de sessie, zodat de bedankpagina ze kan gebruiken
+  function naDank(form, data) { var na = form.getAttribute('data-na'); if (!na) return false; try { sessionStorage.setItem('bf_lead', JSON.stringify({ naam: data.naam, telefoon: data.telefoon, email: data.email })); } catch (e) {} location.href = na; return true; }
   function openMail(href) { if (typeof window.__bfOpenMail === 'function') { window.__bfOpenMail(href); return; } window.location.href = href; }
   [].forEach.call(d.querySelectorAll('.js-offerte'), function (form) {
     var melding = form.querySelector('.formulier-melding');
@@ -90,13 +92,14 @@
       if (eindpunt) {
         meld('Bezig met versturen…');
         fetch(eindpunt, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
-          .then(function (r) { if (!r.ok) throw new Error(r.status); form.reset(); meld('Bedankt. Wij bellen u terug om een bezoek in te plannen.'); })
+          .then(function (r) { if (!r.ok) throw new Error(r.status); if (naDank(form, data)) return; form.reset(); meld('Bedankt. Wij bellen u terug om een bezoek in te plannen.'); })
           .catch(function () { meld('Versturen lukte niet. Bel ons op 0492 48 13 83 of mail naar ' + MAIL + '.'); });
         return;
       }
       var body = (form.getAttribute('data-soort') || 'Offerteaanvraag') + ' via bfbouw.be\n\nNaam: ' + data.naam + '\nTelefoon: ' + data.telefoon + '\nE-mail: ' + data.email + '\nWerk: ' + data.dienst + (form.querySelector('select[name=postcode]') ? '\nProvincie: ' : '\nPostcode: ') + data.postcode + '\nProject: ' + data.project + '\n';
       var href = 'mailto:' + MAIL + '?subject=' + encodeURIComponent((form.getAttribute('data-soort') || 'Offerteaanvraag') + ' ' + data.dienst + ' - ' + data.naam) + '&body=' + encodeURIComponent(body);
       openMail(href);
+      if (form.hasAttribute('data-na')) { setTimeout(function () { naDank(form, data); }, 600); return; }
       meld('Uw e-mailprogramma opent met uw aanvraag. Verstuur die e-mail om de aanvraag af te ronden, of bel ons op 0492 48 13 83.');
     });
   });
@@ -178,7 +181,16 @@
     });
     var pill = d.querySelector('.plaats__inspectie'); if (pill) pill.hidden = soort === 'inspectie';
     // geen focus op een veld: op gsm zou het toetsenbord meteen openspringen (Mohammed 9 okt); alleen naar de formulierkaart scrollen
-    if (focus) { var kaart = d.querySelector('.plaats__formkern'), kop = d.querySelector('.kop'); if (kaart) { var hoog = kop ? kop.getBoundingClientRect().height : 0; window.scrollTo({ top: kaart.getBoundingClientRect().top + window.scrollY - hoog - 12, behavior: 'smooth' }); } }
+    // na het scrollen nog eens nameten: foto's die onderweg laden, duwen de kaart soms weg (tot 3 correcties)
+    if (focus) {
+      var kaart = d.querySelector('.plaats__formkern'), kop = d.querySelector('.kop');
+      if (kaart) {
+        var doel = function () { var hoog = kop ? kop.getBoundingClientRect().height : 0; return kaart.getBoundingClientRect().top + window.scrollY - hoog - 12; };
+        window.scrollTo({ top: doel(), behavior: 'smooth' });
+        var pogingen = 0;
+        (function controleer() { setTimeout(function () { var mis = doel() - window.scrollY; if (Math.abs(mis) > 16 && pogingen++ < 3) { window.scrollTo({ top: doel(), behavior: 'smooth' }); controleer(); } }, 900); })();
+      }
+    }
   }
   Array.prototype.forEach.call(d.querySelectorAll('[data-wissel]'), function (t) { t.addEventListener('click', function () { wissel(t.getAttribute('data-wissel'), false); }); });
   Array.prototype.forEach.call(d.querySelectorAll('[data-kies]'), function (knop) { knop.addEventListener('click', function () { wissel('inspectie', true); }); });
@@ -339,4 +351,40 @@
   new IntersectionObserver(function (it) { it.forEach(function (x) { zicht[x.target === rk ? 'rk' : 'insp'] = x.isIntersecting; }); zet(); }, { threshold: 0.15 }).observe(rk);
   if (insp) new IntersectionObserver(function (it) { zicht.insp = it[0].isIntersecting; zet(); }, { threshold: 0.15 }).observe(insp);
   window.addEventListener('scroll', zet, { passive: true });
+})();
+
+/* Bedankpagina na de rekenaar: kop volgens wat er ingevuld werd, telefoon uit de vorige stap vooraf ingevuld,
+   moment kiezen met één tik, en na verzenden een bevestiging op dezelfde plaats. */
+(function () {
+  'use strict';
+  var d = document, dank = d.querySelector('[data-dank]'); if (!dank) return;
+  var lead = {}; try { lead = JSON.parse(sessionStorage.getItem('bf_lead') || '{}'); } catch (e) { lead = {}; }
+  var kop = dank.querySelector('[data-dank-kop]'), zonder = dank.querySelector('[data-dank-zonder]');
+  if (!lead.email) { kop.textContent = kop.getAttribute('data-zonder'); zonder.hidden = false; } // geen e-mail ingevuld: geen mailbox beloven
+  var form = d.getElementById('dankinspectie'), bel = dank.querySelector('[data-dank-bel]'), telveld = dank.querySelector('[data-dank-telveld]');
+  if (lead.telefoon) {
+    form.elements.telefoon.value = lead.telefoon; dank.querySelector('[data-dank-nummer]').textContent = lead.telefoon;
+    bel.hidden = false; telveld.hidden = true;
+    dank.querySelector('[data-dank-wijzig]').addEventListener('click', function () { bel.hidden = true; telveld.hidden = false; });
+  }
+  if (lead.naam) form.elements.naam.value = lead.naam;
+  if (lead.email) form.elements.email.value = lead.email;
+  Array.prototype.forEach.call(form.querySelectorAll('input[name=moment]'), function (r) {
+    r.addEventListener('change', function () { form.elements.project.value = 'Moment: ' + r.value; form.classList.add('is-gekozen'); });
+  });
+  // bevestiging: de gewone formulierlogica toont "Bedankt" (koppeling) of opent de mail (zonder koppeling); in beide gevallen de kaart wisselen
+  var klaar = dank.querySelector('[data-dank-klaar]');
+  // de bewaker koppelt zich los zodra de bevestiging staat (anders reageert hij op zijn eigen wijziging en blijft hij lopen)
+  var bewaker = new MutationObserver(function () { var m = form.querySelector('.formulier-melding'); if (m && !m.hidden && /bedankt|e-mailprogramma/i.test(m.textContent)) { bewaker.disconnect(); form.hidden = true; klaar.hidden = false; } });
+  bewaker.observe(form.querySelector('.formulier-melding'), { childList: true, characterData: true, subtree: true, attributes: true });
+})();
+
+/* Bedankpagina: urgentiekop volgt de maand (herfst: vóór de winter; winter: deze winter; rest: vóór het stormseizoen) */
+(function () {
+  'use strict';
+  var u = document.querySelector('[data-urgent]'); if (!u) return;
+  var k = {}; try { k = JSON.parse(u.getAttribute('data-koppen')); } catch (e) { return; }
+  var m = new Date().getMonth(); // 0 = januari
+  var s = m >= 8 && m <= 10 ? 'herfst' : (m === 11 || m <= 1 ? 'winter' : 'rest');
+  if (k[s]) u.querySelector('[data-urgent-kop]').textContent = k[s];
 })();
