@@ -309,11 +309,20 @@
         var bij = s.getAttribute('data-tip-bij'); tip = bij && JSON.parse(bij).indexOf(waarde) > -1 ? s.getAttribute('data-tip') : '';
         var v = volgende(i);
         pad.push(v < 0 ? 'eind' : v);
+        if (v < 0) samenvatting();
         if (v < 0) form.elements.project.value = Object.keys(voor).map(function (k) { return k + ': ' + voor[k]; }).concat(pad.filter(function (x) { return typeof x === 'number'; }).map(function (x) { var k = stappen[x].getAttribute('data-sleutel'); return k + ': ' + antw[k]; })).join(' · '); // vooraf ingevuld + doorlopen vragen
         toon(); inBeeld();
       });
     });
   });
+  // laatste stap: aantal antwoorden en zijn eigen antwoorden als labels onder de richtprijs
+  var VOORAF = { Asbest: 'Asbest: ', Start: 'Start: ' };
+  function samenvatting() {
+    var rijen = Object.keys(voor).map(function (k) { return [k, voor[k]]; }).concat(pad.filter(function (x) { return typeof x === 'number'; }).map(function (x) { var k = stappen[x].getAttribute('data-sleutel'); return [k, antw[k]]; }));
+    var n = rk.querySelector('[data-aantal]'), lijst = rk.querySelector('[data-samen]');
+    if (n) n.textContent = rijen.length;
+    if (lijst) { lijst.innerHTML = ''; rijen.forEach(function (r) { var li = d.createElement('li'); li.textContent = (VOORAF[r[0]] || '') + r[1]; lijst.appendChild(li); }); }
+  }
   terugKnop.addEventListener('click', function () { if (pad.length > 1) { pad.pop(); tip = ''; toon(); inBeeld(); } });
   // na een geslaagde verzending (bedankmelding van het gewone formulier) het bedankscherm tonen
   new MutationObserver(function () { var m = form.querySelector('.formulier-melding'); if (m && /bedankt/i.test(m.textContent)) { form.hidden = true; klaar.hidden = false; terugKnop.hidden = true; teller.textContent = 'Klaar'; gerust.hidden = true; tipvak.hidden = true; } }).observe(form, { subtree: true, childList: true, characterData: true });
