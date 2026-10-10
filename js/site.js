@@ -64,12 +64,12 @@
   });
 
   // ---- offerteformulier ----
-  // Zonder koppeling (geen data-form-endpoint op <html>) maakt het formulier een ingevulde e-mail aan info@bfbouw.be.
-  // Tests zetten window.__bfOpenMail zodat er nooit een mailprogramma opent op de pc.
+  // Verzenden gaat ALLEEN via de koppeling (data-form-endpoint op <html>, GoHighLevel-webhook). Er opent NOOIT een mailprogramma
+  // (Mohammed 10 okt). Zonder koppeling krijgt de bezoeker de gewone bevestiging; de aanvraag komt dan nergens binnen, dus de
+  // koppeling moet er zijn voordat de advertenties live gaan. Tests lezen de aanvraag via window.__bfVerzonden.
   var MAIL = 'info@bfbouw.be';
   // na een geslaagde aanvraag door naar de bedankpagina (data-na); telefoon, naam en e-mail gaan mee in de sessie, zodat de bedankpagina ze kan gebruiken
   function naDank(form, data) { var na = form.getAttribute('data-na'); if (!na) return false; try { sessionStorage.setItem('bf_lead', JSON.stringify({ naam: data.naam, telefoon: data.telefoon, email: data.email })); } catch (e) {} location.href = na; return true; }
-  function openMail(href) { if (typeof window.__bfOpenMail === 'function') { window.__bfOpenMail(href); return; } window.location.href = href; }
   [].forEach.call(d.querySelectorAll('.js-offerte'), function (form) {
     var melding = form.querySelector('.formulier-melding');
     function meld(t) { melding.textContent = t; melding.hidden = false; }
@@ -87,7 +87,8 @@
         meld(fout === te ? 'Vul een telefoonnummer in waarop wij u kunnen bellen.' : fout === em ? 'Dit e-mailadres klopt niet.' : fout === di ? 'Kies om welk werk het gaat.' : 'Vul uw naam in.');
         return;
       }
-      var data = { naam: vn.value.trim(), postcode: form.elements.postcode.value.trim(), project: form.elements.project.value.trim(), email: em.value.trim(), telefoon: te.value.trim(), dienst: di.value, pagina: location.pathname };
+      var soort = form.getAttribute('data-soort') || 'Offerteaanvraag';
+      var data = { soort: soort, naam: vn.value.trim(), postcode: form.elements.postcode.value.trim(), project: form.elements.project.value.trim(), email: em.value.trim(), telefoon: te.value.trim(), dienst: di.value, pagina: location.pathname };
       var eindpunt = d.documentElement.getAttribute('data-form-endpoint');
       if (eindpunt) {
         meld('Bezig met versturen…');
@@ -96,11 +97,11 @@
           .catch(function () { meld('Versturen lukte niet. Bel ons op 0492 48 13 83 of mail naar ' + MAIL + '.'); });
         return;
       }
-      var body = (form.getAttribute('data-soort') || 'Offerteaanvraag') + ' via bfbouw.be\n\nNaam: ' + data.naam + '\nTelefoon: ' + data.telefoon + '\nE-mail: ' + data.email + '\nWerk: ' + data.dienst + (form.querySelector('select[name=postcode]') ? '\nProvincie: ' : '\nPostcode: ') + data.postcode + '\nProject: ' + data.project + '\n';
-      var href = 'mailto:' + MAIL + '?subject=' + encodeURIComponent((form.getAttribute('data-soort') || 'Offerteaanvraag') + ' ' + data.dienst + ' - ' + data.naam) + '&body=' + encodeURIComponent(body);
-      openMail(href);
-      if (form.hasAttribute('data-na')) { setTimeout(function () { naDank(form, data); }, 600); return; }
-      meld('Uw e-mailprogramma opent met uw aanvraag. Verstuur die e-mail om de aanvraag af te ronden, of bel ons op 0492 48 13 83.');
+      // zonder koppeling: niets openen, gewoon bevestigen (testhaak krijgt de aanvraag als tekst)
+      if (typeof window.__bfVerzonden === 'function') window.__bfVerzonden(soort + ' ' + data.dienst + ' - ' + data.naam + '\n\nNaam: ' + data.naam + '\nTelefoon: ' + data.telefoon + '\nE-mail: ' + data.email + '\nWerk: ' + data.dienst + (form.querySelector('select[name=postcode]') ? '\nProvincie: ' : '\nPostcode: ') + data.postcode + '\nProject: ' + data.project + '\n');
+      if (naDank(form, data)) return;
+      form.reset();
+      meld('Bedankt. Wij bellen u terug om een bezoek in te plannen.');
     });
   });
 })();
@@ -375,7 +376,7 @@
   // bevestiging: de gewone formulierlogica toont "Bedankt" (koppeling) of opent de mail (zonder koppeling); in beide gevallen de kaart wisselen
   var klaar = dank.querySelector('[data-dank-klaar]');
   // de bewaker koppelt zich los zodra de bevestiging staat (anders reageert hij op zijn eigen wijziging en blijft hij lopen)
-  var bewaker = new MutationObserver(function () { var m = form.querySelector('.formulier-melding'); if (m && !m.hidden && /bedankt|e-mailprogramma/i.test(m.textContent)) { bewaker.disconnect(); form.hidden = true; klaar.hidden = false; } });
+  var bewaker = new MutationObserver(function () { var m = form.querySelector('.formulier-melding'); if (m && !m.hidden && /bedankt/i.test(m.textContent)) { bewaker.disconnect(); form.hidden = true; klaar.hidden = false; } });
   bewaker.observe(form.querySelector('.formulier-melding'), { childList: true, characterData: true, subtree: true, attributes: true });
 })();
 
