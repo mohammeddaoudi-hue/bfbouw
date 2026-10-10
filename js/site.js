@@ -277,11 +277,15 @@
   var form = rk.querySelector('form.rk__form'), klaar = rk.querySelector('.rk__klaar');
   var teller = rk.querySelector('[data-teller]'), terugKnop = rk.querySelector('[data-terug]'), balk = rk.querySelector('.rk__balk i');
   var gerust = rk.querySelector('[data-gerust]'), tipvak = rk.querySelector('[data-tipvak]'), eind = rk.querySelector('.rk__eind');
-  var antw = {}, pad = [0], tip = '';
+  // antwoorden uit de zoekopdracht (variant van de landingspagina, bv. plat dak): vooraf ingevuld en overgeslagen
+  var voor = {}; try { voor = JSON.parse(rk.getAttribute('data-voor') || '{}'); } catch (e) { voor = {}; }
+  var antw = {}; Object.keys(voor).forEach(function (k) { antw[k] = voor[k]; });
+  var aantalVoor = Object.keys(voor).length, tip = '';
   function als(s) { var a = s.getAttribute('data-als'); return a ? JSON.parse(a) : null; }
   // past de stap bij de antwoorden? een nog onbeantwoorde voorwaarde telt mee als "misschien" voor de teller
   function past(s, streng) { var a = als(s); if (!a) return true; return Object.keys(a).every(function (k) { return antw[k] === undefined ? !streng : a[k].indexOf(antw[k]) > -1; }); }
-  function volgende(i) { for (var j = i + 1; j < stappen.length; j++) if (past(stappen[j], true)) return j; return -1; }
+  function volgende(i) { for (var j = i + 1; j < stappen.length; j++) if (past(stappen[j], true) && !(stappen[j].getAttribute('data-sleutel') in voor)) return j; return -1; }
+  var pad = [volgende(-1)];
   function totaal() { var s2 = {}; stappen.forEach(function (s) { if (past(s, false)) s2[s.getAttribute('data-sleutel')] = 1; }); return Object.keys(s2).length; } // per sleutel: de twee bedekkingsvragen sluiten elkaar uit
   function inBeeld() { var kop = d.querySelector('.kop'), h = kop ? kop.getBoundingClientRect().height : 0, top = rk.getBoundingClientRect().top; if (top < h) window.scrollTo({ top: top + window.scrollY - h - 12, behavior: 'smooth' }); }
   function toon() {
@@ -289,10 +293,11 @@
     stappen.forEach(function (s, i) { s.hidden = i !== nu; });
     form.hidden = nu !== 'eind'; klaar.hidden = true;
     terugKnop.hidden = pad.length < 2;
-    teller.textContent = nu === 'eind' ? 'Laatste stap' : 'Vraag ' + pad.length + ' van ' + n;
-    balk.style.width = Math.round((nu === 'eind' ? 1 : (pad.length - 1) / n) * 100) + '%';
+    var nr = pad.length + aantalVoor; // vooraf ingevulde vragen tellen als gezette stap
+    teller.textContent = nu === 'eind' ? 'Laatste stap' : 'Vraag ' + nr + ' van ' + n;
+    balk.style.width = Math.round((nu === 'eind' ? 1 : (nr - 1) / n) * 100) + '%';
     eind.classList.toggle('is-aan', nu === 'eind');
-    gerust.hidden = !(typeof nu === 'number' && nu > 0);
+    gerust.hidden = !(typeof nu === 'number' && pad.length > 1);
     tipvak.hidden = !tip; tipvak.textContent = tip;
   }
   stappen.forEach(function (s, i) {
@@ -304,7 +309,7 @@
         var bij = s.getAttribute('data-tip-bij'); tip = bij && JSON.parse(bij).indexOf(waarde) > -1 ? s.getAttribute('data-tip') : '';
         var v = volgende(i);
         pad.push(v < 0 ? 'eind' : v);
-        if (v < 0) form.elements.project.value = pad.filter(function (x) { return typeof x === 'number'; }).map(function (x) { var k = stappen[x].getAttribute('data-sleutel'); return k + ': ' + antw[k]; }).join(' · '); // alleen de doorlopen vragen
+        if (v < 0) form.elements.project.value = Object.keys(voor).map(function (k) { return k + ': ' + voor[k]; }).concat(pad.filter(function (x) { return typeof x === 'number'; }).map(function (x) { var k = stappen[x].getAttribute('data-sleutel'); return k + ': ' + antw[k]; })).join(' · '); // vooraf ingevuld + doorlopen vragen
         toon(); inBeeld();
       });
     });
